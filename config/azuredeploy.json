@@ -1,0 +1,122 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "imageLabel": {
+            "type": "string"
+        },
+        "containerGroupsName": {
+            "defaultValue": "bootstrapper",
+            "type": "String"
+        },
+        "vmSize": {
+            "type": "string",
+            "defaultValue": "STANDARD_DS3_V2"
+        },
+        "repoUri": {
+            "type": "string",
+            "defaultValue": "https://github.com/Latticecraft/Azure-ML-Accelerator.git"
+        },
+        "branch": {
+            "type": "string",
+            "defaultValue": "main"
+        },
+        "repoPath": {
+            "type": "string",
+            "defaultValue": "/root/Azure-ML-Accelerator"
+        },
+        "roleDefinitionId": {
+            "type": "string",
+            "metadata": {
+                "description": "Specifies the role definition ID used in the role assignment."
+            }
+        },
+        "roleNameGuid": {
+            "type": "string",
+            "defaultValue": "[newGuid()]",
+            "metadata": {
+                "description": "A new GUID used to identify the role assignment"
+            }
+        }
+    },
+    "resources": [
+        {
+            "type": "Microsoft.ContainerInstance/containerGroups",
+            "apiVersion": "2021-10-01",
+            "name": "[parameters('containerGroupsName')]",
+            "location": "westus3",
+            "identity": {
+                "type": "SystemAssigned"
+            },
+            "properties": {
+                "sku": "Standard",
+                "containers": [
+                    {
+                        "name": "[parameters('containerGroupsName')]",
+                        "properties": {
+                            "image": "[concat('latticecraft/ml-builder:', parameters('imageLabel'))]",
+                            "ports": [
+                                {
+                                    "protocol": "TCP",
+                                    "port": 8080
+                                }
+                            ],
+                            "environmentVariables": [
+                                {
+                                    "name": "LTCFT_RESOURCEGROUP",
+                                    "value": "[resourceGroup().name]"
+                                },
+                                {
+                                    "name": "LTCFT_VMSIZE",
+                                    "value": "[parameters('vmSize')]"
+                                },
+                                {
+                                    "name": "LTCFT_REPOURI",
+                                    "value": "[parameters('repoUri')]"
+                                },
+                                {
+                                    "name": "LTCFT_BRANCH",
+                                    "value": "[parameters('branch')]"
+                                },
+                                {
+                                    "name": "LTCFT_REPOPATH",
+                                    "value": "[parameters('repoPath')]"
+                                }
+                            ],
+                            "resources": {
+                                "requests": {
+                                    "memoryInGB": 4,
+                                    "cpu": 2
+                                }
+                            }
+                        }
+                    }
+                ],
+                "initContainers": [],
+                "restartPolicy": "Never",
+                "ipAddress": {
+                    "ports": [
+                        {
+                            "protocol": "TCP",
+                            "port": 8080
+                        }
+                    ],
+                    "type": "Public"
+                },
+                "osType": "Linux"
+            }
+        },
+        {
+            "type": "Microsoft.Authorization/roleAssignments",
+            "apiVersion": "2020-10-01-preview",
+            "name": "[parameters('roleNameGuid')]",
+            "properties": {
+                "roleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', parameters('roleDefinitionID'))]",
+                "principalId": "[reference(resourceId('Microsoft.ContainerInstance/containerGroups', parameters('containerGroupsName')),'2021-10-01', 'full').identity.principalId]"
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.ContainerInstance/containerGroups', parameters('containerGroupsName'))]"
+            ]
+        }
+    ]
+}
