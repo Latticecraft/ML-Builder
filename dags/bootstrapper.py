@@ -63,7 +63,7 @@ def build_env():
 def create_compute():
     return BashOperator(
         task_id='create_compute',
-        bash_command='az ml compute create --name cpu-cluster --size STANDARD_DS3_V2 --min-instances 0 --max-instances 1 --type AmlCompute --resource-group {{var.value.group}} --workspace-name {{task_instance.xcom_pull("get_workspace_name")}}',
+        bash_command='az ml compute create --name cpu-cluster --size {{var.value.vmSize}} --min-instances 0 --max-instances 1 --type AmlCompute --resource-group {{var.value.group}} --workspace-name {{task_instance.xcom_pull("get_workspace_name")}}',
         start_date=datetime.now())
 
 def wait_for_compute():
