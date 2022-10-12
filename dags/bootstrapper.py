@@ -12,10 +12,16 @@ from airflow.utils.task_group import TaskGroup
 from datetime import datetime
 
 
-def git_clone():
+def git_clone_accel():
     return BashOperator(
-        task_id='git_clone',
-        bash_command='mkdir {{var.value.repoPath}}; git clone --branch {{var.value.branch}} {{var.value.repoUri}} /root/Azure-ML-Accelerator', 
+        task_id='git_clone_accel',
+        bash_command='mkdir {{var.value.accelRepoPath}}; git clone --branch {{var.value.accelBranch}} {{var.value.accelRepoUri}} {{var.value.accelRepoPath}}', 
+        start_date=datetime.now())
+
+def git_clone_dash():
+    return BashOperator(
+        task_id='git_clone_dash',
+        bash_command='mkdir {{var.value.dashRepoPath}}; git clone --branch {{var.value.dashBranch}} {{var.value.dashRepoUri}} {{var.value.dashRepoPath}}', 
         start_date=datetime.now())
 
 def login():
@@ -27,7 +33,7 @@ def login():
 def deploy_arm():
     return BashOperator(
         task_id='deploy_arm',
-        bash_command='az deployment group create --resource-group {{var.value.group}} --template-file {{var.value.repoPath}}/config/resourcegroup/azuredeploy-accelerator.json --parameters vmSize={{var.value.vmSize}}', 
+        bash_command='az deployment group create --resource-group {{var.value.group}} --template-file {{var.value.accelRepoPath}}/config/resourcegroup/azuredeploy-accelerator.json --parameters vmSize={{var.value.vmSize}}', 
         start_date=datetime.now())
 
 def get_location():
@@ -51,13 +57,13 @@ def set_defaults():
 def create_env():
     return BashOperator(
         task_id='create_env',
-        bash_command='az ml environment create --name lgbmholoenv --version 1 --build-context {{var.value.repoPath}}/config/environment/ --dockerfile-path lgbmholoenv.Dockerfile',
+        bash_command='az ml environment create --name lgbmholoenv --version 1 --build-context {{var.value.accelRepoPath}}/config/environment/ --dockerfile-path lgbmholoenv.Dockerfile',
         start_date=datetime.now())
 
 def build_env():
     return BashOperator(
         task_id='build_env',
-        bash_command='az ml job create --file {{var.value.repoPath}}/config/pipeline/buildenv.yaml --stream',
+        bash_command='az ml job create --file {{var.value.accelRepoPath}}/config/pipeline/buildenv.yaml --stream',
         start_date=datetime.now())
 
 def create_compute():
@@ -75,13 +81,13 @@ def wait_for_compute():
 def download_data():
     return BashOperator(
         task_id='download_data',
-        bash_command='mkdir {{var.value.repoPath}}/data; curl --output {{var.value.repoPath}}/data/Bank_Campaign.csv https://ltcftwebaiprod.blob.core.windows.net/datasets/Bank_Campaign.csv',
+        bash_command='mkdir {{var.value.accelRepoPath}}/data; curl --output {{var.value.accelRepoPath}}/data/Bank_Campaign.csv https://ltcftwebaiprod.blob.core.windows.net/datasets/Bank_Campaign.csv',
         start_date=datetime.now())
 
 def upload_data():
     return BashOperator(
         task_id='upload_data',
-        bash_command='az ml data create --datastore input --name Bank_Campaign --path {{var.value.repoPath}}/data/Bank_Campaign.csv --version 1 --type uri_file',
+        bash_command='az ml data create --datastore input --name Bank_Campaign --path {{var.value.accelRepoPath}}/data/Bank_Campaign.csv --version 1 --type uri_file',
         start_date=datetime.now())
 
 def get_data_path():
@@ -93,19 +99,26 @@ def get_data_path():
 def run_featurize():
     return BashOperator(
         task_id='featurize',
-        bash_command='python {{var.value.repoPath}}/src/commands/featurize.py --project Bank-Campaign --type Binary --input {{task_instance.xcom_pull("get_data_path")}} --label subscribed --replacements %7B%22yes%22%3Atrue%2C%22no%22%3Afalse%7D --datatypes %7B%22default%22%3A%22bool%22%2C%22housing%22%3A%22bool%22%2C%22loan%22%3A%22bool%22%7D --separator semicolon --filename featurize-gen.yaml --run True',
+        bash_command='python {{var.value.accelRepoPath}}/src/commands/featurize.py --project Bank-Campaign --type Binary --input {{task_instance.xcom_pull("get_data_path")}} --label subscribed --replacements %7B%22yes%22%3Atrue%2C%22no%22%3Afalse%7D --datatypes %7B%22default%22%3A%22bool%22%2C%22housing%22%3A%22bool%22%2C%22loan%22%3A%22bool%22%7D --separator semicolon --filename featurize-gen.yaml --run True',
         start_date=datetime.now())
 
 def run_train():
     return BashOperator(
         task_id='train',
-        bash_command='python {{var.value.repoPath}}/src/commands/train.py --project Bank-Campaign --type Binary --primary-metric weighted-avg_f1-score --label subscribed --source "https://www.kaggle.com/datasets/pankajbhowmik/bank-marketing-campaign-subscriptions" --imputers knn --balancers ros --num-trials 5 --filename train-gen.yaml --run True',
+        bash_command='python {{var.value.accelRepoPath}}/src/commands/train.py --project Bank-Campaign --type Binary --primary-metric weighted-avg_f1-score --label subscribed --source "https://www.kaggle.com/datasets/pankajbhowmik/bank-marketing-campaign-subscriptions" --imputers knn --balancers ros --num-trials 5 --filename train-gen.yaml --run True',
+        start_date=datetime.now())
+
+def run_dashboard():
+    return BashOperator(
+        task_id='update_dashboard',
+        bash_command='python {{var.value.dashRepoPath}}/src/commands/update_dashboard.py --project Bank-Campaign --type Binary --primary-metric weighted-avg_f1-score --label subscribed',
         start_date=datetime.now())
 
 # DAG
 @dag(schedule_interval=None, catchup=False)
 def Bootstrapper():
-    git_clone() >> \
+    git_clone_accel() >> \
+    git_clone_dash() >> \
     login() >> \
     deploy_arm() >> \
     get_workspace_name() >> \
@@ -118,7 +131,8 @@ def Bootstrapper():
     upload_data() >> \
     get_data_path() >> \
     run_featurize() >> \
-    run_train()
+    run_train() >> \
+    run_dashboard()
 
 # run main function
 dag1 = Bootstrapper()

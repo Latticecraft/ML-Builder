@@ -13,17 +13,29 @@
             "type": "string",
             "defaultValue": "STANDARD_DS3_V2"
         },
-        "repoUri": {
+        "accelRepoUri": {
             "type": "string",
             "defaultValue": "https://github.com/Latticecraft/Azure-ML-Accelerator.git"
         },
-        "branch": {
+        "accelBranch": {
             "type": "string",
             "defaultValue": "main"
         },
-        "repoPath": {
+        "dashRepoUri": {
+            "type": "string",
+            "defaultValue": "https://github.com/Latticecraft/Azure-ML-Dashboard.git"
+        },
+        "dashBranch": {
+            "type": "string",
+            "defaultValue": "main"
+        },
+        "accelRepoPath": {
             "type": "string",
             "defaultValue": "/root/Azure-ML-Accelerator"
+        },
+        "dashRepoPath": {
+            "type": "string",
+            "defaultValue": "/root/Azure-ML-Dashboard"
         },
         "roleDefinitionId": {
             "type": "string",
@@ -54,7 +66,7 @@
                     {
                         "name": "[parameters('containerGroupsName')]",
                         "properties": {
-                            "image": "[concat('latticecraft/ml-builder:', parameters('imageLabel'))]",
+                            "image": "[concat('containerizedai.azurecr.io/ml-builder:', parameters('imageLabel'))]",
                             "ports": [
                                 {
                                     "protocol": "TCP",
@@ -71,16 +83,28 @@
                                     "value": "[parameters('vmSize')]"
                                 },
                                 {
-                                    "name": "LTCFT_REPOURI",
-                                    "value": "[parameters('repoUri')]"
+                                    "name": "LTCFT_ACCELREPOURI",
+                                    "value": "[parameters('accelRepoUri')]"
                                 },
                                 {
-                                    "name": "LTCFT_BRANCH",
-                                    "value": "[parameters('branch')]"
+                                    "name": "LTCFT_ACCELBRANCH",
+                                    "value": "[parameters('accelBranch')]"
                                 },
                                 {
-                                    "name": "LTCFT_REPOPATH",
-                                    "value": "[parameters('repoPath')]"
+                                    "name": "LTCFT_DASHREPOURI",
+                                    "value": "[parameters('dashRepoUri')]"
+                                },
+                                {
+                                    "name": "LTCFT_DASHBRANCH",
+                                    "value": "[parameters('dashBranch')]"
+                                },
+                                {
+                                    "name": "LTCFT_ACCELREPOPATH",
+                                    "value": "[parameters('accelRepoPath')]"
+                                },
+                                {
+                                    "name": "LTCFT_DASHREPOPATH",
+                                    "value": "[parameters('dashRepoPath')]"
                                 }
                             ],
                             "resources": {
@@ -103,7 +127,14 @@
                     ],
                     "type": "Public"
                 },
-                "osType": "Linux"
+                "osType": "Linux",
+                "imageRegistryCredentials": [
+                    {
+                        "server": "containerizedai.azurecr.io",
+                        "username": "containerizedai",
+                        "password": "2yErtdQaF+vgPOC6IY5VoeYODcxdTzZr"
+                    }
+                ],
             }
         },
         {
