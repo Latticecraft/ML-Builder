@@ -66,7 +66,7 @@
                     {
                         "name": "[parameters('containerGroupsName')]",
                         "properties": {
-                            "image": "[concat('containerizedai.azurecr.io/ml-builder:', parameters('imageLabel'))]",
+                            "image": "[concat('latticecraft/ml-builder:', parameters('imageLabel'))]",
                             "ports": [
                                 {
                                     "protocol": "TCP",
@@ -127,14 +127,7 @@
                     ],
                     "type": "Public"
                 },
-                "osType": "Linux",
-                "imageRegistryCredentials": [
-                    {
-                        "server": "containerizedai.azurecr.io",
-                        "username": "containerizedai",
-                        "password": "2yErtdQaF+vgPOC6IY5VoeYODcxdTzZr"
-                    }
-                ],
+                "osType": "Linux"
             }
         },
         {
