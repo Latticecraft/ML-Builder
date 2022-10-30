@@ -9,6 +9,8 @@ airflow variables set dashRepoUri $LTCFT_DASHREPOURI
 airflow variables set dashBranch $LTCFT_DASHBRANCH
 airflow variables set accelRepoPath $LTCFT_ACCELREPOPATH
 airflow variables set dashRepoPath $LTCFT_DASHREPOPATH
+airflow variables set storageAccountOption $LTCFT_STORAGEOPTION
+airflow variables set storageAccountName $LTCFT_STORAGENAME
 until airflow dags list | grep "Bootstrapper"; do sleep 5; done
 airflow dags unpause Bootstrapper
 airflow dags trigger Bootstrapper

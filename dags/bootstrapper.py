@@ -33,7 +33,7 @@ def login():
 def deploy_arm():
     return BashOperator(
         task_id='deploy_arm',
-        bash_command='az deployment group create --resource-group {{var.value.group}} --template-file {{var.value.accelRepoPath}}/config/resourcegroup/azuredeploy-accelerator.json --parameters vmSize={{var.value.vmSize}}', 
+        bash_command='az deployment group create --resource-group {{var.value.group}} --template-file {{var.value.accelRepoPath}}/config/resourcegroup/azuredeploy-accelerator.json --parameters vmSize={{var.value.vmSize}} storageAccountOption=existing storageAccountName={{var.value.storageAccountName}}', 
         start_date=datetime.now())
 
 def get_location():
