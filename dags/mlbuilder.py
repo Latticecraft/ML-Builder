@@ -33,7 +33,7 @@ def login():
 def deploy_arm():
     return BashOperator(
         task_id='deploy_arm',
-        bash_command='az deployment group create --resource-group {{var.value.group}} --template-file {{var.value.accelRepoPath}}/config/resourcegroup/azuredeploy-accelerator.json --parameters vmSize={{var.value.vmSize}} storageAccountOption=existing storageAccountName={{var.value.storageAccountName}}', 
+        bash_command='az deployment group create --resource-group {{var.value.group}} --template-file {{var.value.accelRepoPath}}/config/resourcegroup/azuredeploy-accelerator.json --parameters vmSize={{var.value.vmSize}}', 
         start_date=datetime.now())
 
 def get_location():
@@ -78,6 +78,17 @@ def wait_for_compute():
         bash_command='until az ml compute show --name cpu-cluster --query provisioning_state --resource-group {{var.value.group}} --workspace-name {{task_instance.xcom_pull("get_workspace_name")}} | grep "Succeeded"; do sleep 1; done',
         start_date=datetime.now())
 
+def run_default_experiments():
+    run_default = Variable.get('runDefaultExperiments')
+    if run_default == 'True':
+        return 'default_experiments.download_data'
+    else:
+        return 'do_nothing'
+
+@task
+def do_nothing():
+    return
+
 def download_data():
     return BashOperator(
         task_id='download_data',
@@ -99,7 +110,7 @@ def get_data_path():
 def run_featurize():
     return BashOperator(
         task_id='featurize',
-        bash_command='python {{var.value.accelRepoPath}}/src/commands/featurize.py --project Bank-Campaign --type Binary --input {{task_instance.xcom_pull("get_data_path")}} --label subscribed --replacements %7B%22yes%22%3Atrue%2C%22no%22%3Afalse%7D --datatypes %7B%22default%22%3A%22bool%22%2C%22housing%22%3A%22bool%22%2C%22loan%22%3A%22bool%22%7D --separator semicolon --filename featurize-gen.yaml --run True',
+        bash_command='python {{var.value.accelRepoPath}}/src/commands/featurize.py --project Bank-Campaign --type Binary --input {{task_instance.xcom_pull("default_experiments.get_data_path")}} --label subscribed --replacements %7B%22yes%22%3Atrue%2C%22no%22%3Afalse%7D --datatypes %7B%22default%22%3A%22bool%22%2C%22housing%22%3A%22bool%22%2C%22loan%22%3A%22bool%22%7D --separator semicolon --filename featurize-gen.yaml --run True',
         start_date=datetime.now())
 
 def run_train():
@@ -114,9 +125,18 @@ def run_dashboard():
         bash_command='python {{var.value.dashRepoPath}}/src/commands/update_dashboard.py --project Bank-Campaign --type Binary --primary-metric weighted-avg_f1-score --label subscribed',
         start_date=datetime.now())
 
+@task_group(group_id='default_experiments')
+def taskgroup_defaultexps():
+    download_data() >> \
+    upload_data() >> \
+    get_data_path() >> \
+    run_featurize() >> \
+    run_train() >> \
+    run_dashboard()
+
 # DAG
-@dag(schedule_interval=None, catchup=False)
-def Bootstrapper():
+@dag(schedule_interval=None, start_date=datetime(2022,1,1), catchup=False)
+def MLBuilder():
     git_clone_accel() >> \
     git_clone_dash() >> \
     login() >> \
@@ -127,13 +147,14 @@ def Bootstrapper():
     wait_for_compute() >> \
     create_env() >> \
     build_env() >> \
-    download_data() >> \
-    upload_data() >> \
-    get_data_path() >> \
-    run_featurize() >> \
-    run_train() >> \
-    run_dashboard()
+    BranchPythonOperator(
+        task_id='run_default_experiments',
+        python_callable=run_default_experiments) >> [
+            do_nothing(),
+            taskgroup_defaultexps()
+        ]
+    
 
 # run main function
-dag1 = Bootstrapper()
+dag1 = MLBuilder()
 dag1

@@ -6,7 +6,7 @@
             "type": "string"
         },
         "containerGroupsName": {
-            "defaultValue": "bootstrapper",
+            "defaultValue": "ml-builder",
             "type": "String"
         },
         "vmSize": {
@@ -50,23 +50,9 @@
                 "description": "A new GUID used to identify the role assignment"
             }
         },
-        "storageAccountOption": {
+        "runDefaultExperiments": {
             "type": "string",
-            "defaultValue": "new",
-            "allowedValues": [
-                "new",
-                "existing"
-            ],
-            "metadata": {
-                "description": "Determines whether or not a new storage should be provisioned."
-            }
-        },
-        "storageAccountName": {
-            "type": "string",
-            "defaultValue": "[concat('sa',uniqueString(resourceGroup().id, parameters('workspaceName')))]",
-            "metadata": {
-                "description": "Name of the storage account."
-            }
+            "defaultValue": "True"
         }
     },
     "resources": [
@@ -125,12 +111,8 @@
                                     "value": "[parameters('dashRepoPath')]"
                                 },
                                 {
-                                    "name": "LTCFT_STORAGEOPTION",
-                                    "value": "[parameters('storageAccountOption')]"
-                                },
-                                {
-                                    "name": "LTCFT_STORAGENAME",
-                                    "value": "[parameters('storageAccountName')]"
+                                    "name": "LTCFT_RUNDEFAULTEXPERIMENTS",
+                                    "value": "[parameters('runDefaultExperiments')]"
                                 }
                             ],
                             "resources": {
